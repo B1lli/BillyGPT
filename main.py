@@ -113,6 +113,13 @@ class chat_window(ft.UserControl):
             print( d_msg )
 
 
+
+
+
+
+
+
+
 '''
 读写chatlog的相关函数
 '''
@@ -309,8 +316,6 @@ def markdown_check(gpt_msg):
 
 
 
-
-
 '''
 程序主窗体
 '''
@@ -320,6 +325,50 @@ def ft_interface(page: ft.Page) :
     page.fonts = {'A75方正像素12' : '../assets/font.ttf'}
     page.theme = ft.Theme ( font_family='A75方正像素12' )
     page.dark_theme = page.theme
+
+
+    # 设置设置按钮
+    dlg = ft.AlertDialog(
+        title=ft.Text("Hello, you!"), on_dismiss=lambda e: print("Dialog dismissed!")
+    )
+    def save_settings(e):
+        dlg_modal.open = False
+        write_APIKEY(apikey_field.value)
+        read_APIKEY ()
+        page.update()
+
+    apikey_field = ft.TextField(hint_text='在此输入apikey')
+    dlg_modal = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Settings"),
+        content=apikey_field,
+        actions=[
+            ft.TextButton("Save", on_click=save_settings),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+        on_dismiss=lambda e: print("Modal dialog dismissed!"),
+    )
+
+    def open_dlg(e):
+        page.dialog = dlg
+        dlg.open = True
+        page.update()
+
+    def open_dlg_modal(e):
+        page.dialog = dlg_modal
+        dlg_modal.open = True
+        page.update()
+
+
+    settings_btn = ft.IconButton(
+                    icon=ft.icons.SETTINGS_OUTLINED,
+                    # icon_color="blue400",
+                    icon_size=20,
+                    tooltip="Settings",
+        on_click=open_dlg_modal,
+                )
+    page.add(ft.Row(controls=[settings_btn],alignment=ft.MainAxisAlignment.END))
+
 
 
     # 设置滚动列表
@@ -347,6 +396,7 @@ def ft_interface(page: ft.Page) :
         ],
     )
 
+
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.add(view)
 
@@ -365,7 +415,7 @@ def ft_interface(page: ft.Page) :
 
 
     # 版本信息
-    ver_text = ft.Text('BillyGPT V3.0.0  By B1lli',size=10)
+    ver_text = ft.Text('BillyGPT V3.1.0  By B1lli',size=10)
     page.add(ver_text)
 
 
