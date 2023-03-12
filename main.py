@@ -1,9 +1,4 @@
 # coding=utf-8
-"""
-@author B1lli
-@date 2023年03月09日 17:11:42
-@File:main.py
-"""
 import json
 import hashlib
 from datetime import datetime
@@ -13,9 +8,21 @@ import openai
 import flet as ft
 import re
 
+from flet import (
+    ElevatedButton,
+    FilePicker,
+    FilePickerResultEvent,
+    Page,
+    Row,
+    Text,
+    icons,
+)
+
+
 # 赋值固定的api_key
 # 测试用
-openai.api_key = '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'
+openai.api_key = None
+
 
 # 创建对话行的类
 class chat_row(ft.UserControl) :
@@ -63,7 +70,7 @@ class chat_row(ft.UserControl) :
         self.content = self.content_textfield.value
         renew_now_chat(chat_json_path=chat_json_path,hash_val=self.hash,content=self.content)
 
-# 创建对话窗口的类（没做好，还在学怎么做）
+# （没做好，还在学怎么做）创建对话窗口的类
 class chat_window(ft.UserControl):
     def __init__(self):
         super(chat_window, self).__init__()
@@ -111,12 +118,6 @@ class chat_window(ft.UserControl):
             print( f"出现如下报错：\n{e}，如果无法重新发起对话，请尝试重启程序，或者检查自己的网络环境能否连接到openai的服务器" )
         finally:
             print( d_msg )
-
-
-
-
-
-
 
 
 
@@ -277,6 +278,7 @@ def write_APIKEY(APIKEY):
         # 写入字符串并换行
         f.write(APIKEY + "\n")
 
+
 # 定义 read_APIKEY 函数
 def read_APIKEY():
 # 以读取模式打开 APIKEY.txt 文件
@@ -310,6 +312,7 @@ def decode_chr(s) :
     result += s[pos :]
     return result
 
+
 # markdown检测
 def markdown_check(gpt_msg):
     pass
@@ -322,60 +325,166 @@ def markdown_check(gpt_msg):
 def ft_interface(page: ft.Page) :
     # 设置字体与主题
     page.title = 'BillyGPT'
-    page.fonts = {'A75方正像素12' : '../assets/font.ttf'}
+    page.fonts = {'A75方正像素12' : './assets/font.ttf'}
     page.theme = ft.Theme ( font_family='A75方正像素12' )
     page.dark_theme = page.theme
 
 
-    # 设置设置按钮
-    dlg = ft.AlertDialog(
-        title=ft.Text("Hello, you!"), on_dismiss=lambda e: print("Dialog dismissed!")
+    # if not openai.api_key:
+    #     write_APIKEY()
+
+    '''
+    （没写好）添加报错提示对话
+    '''
+    global error_msg
+    error_msg = ''
+    def open_alert(e):
+        alert_dlg.open = True
+        page.update ()
+        pass
+
+    alert_dlg = ft.AlertDialog(
+        title=ft.Text("错误"), on_dismiss=lambda e: print("Dialog dismissed!")
     )
+
+
+
+
+
+    '''
+    添加选择上传文件、保存文件、打开文件夹按钮
+    '''
+    # 上传
+    def pick_files_result(e: FilePickerResultEvent):
+        selected_files.value = (
+            ", ".join(map(lambda f: f.name, e.files)) if e.files else "Cancelled!"
+        )
+        selected_files.update()
+
+    pick_files_dialog = FilePicker(on_result=pick_files_result)
+    selected_files = Text()
+
+    # 保存
+    def save_file_result(e: FilePickerResultEvent):
+        save_file_path.value = e.path if e.path else "Cancelled!"
+        save_file_path.update()
+
+    save_file_dialog = FilePicker(on_result=save_file_result)
+    save_file_path = Text()
+
+    # 打开文件夹
+    def get_directory_result(e: FilePickerResultEvent):
+        directory_path.value = e.path if e.path else "Cancelled!"
+        directory_path.update()
+
+    get_directory_dialog = FilePicker(on_result=get_directory_result)
+    directory_path = Text()
+
+    # hide all dialogs in overlay
+    page.overlay.extend([pick_files_dialog, save_file_dialog, get_directory_dialog])
+
+
+
+
+
+
+    '''
+    添加设置对话和按钮
+    '''
     def save_settings(e):
-        dlg_modal.open = False
+        settings_dlg.open = False
         write_APIKEY(apikey_field.value)
         read_APIKEY ()
         page.update()
 
-    apikey_field = ft.TextField(hint_text='在此输入apikey')
-    dlg_modal = ft.AlertDialog(
-        modal=True,
+    def cancel_settings(e):
+        settings_dlg.open = False
+        page.update()
+
+    apikey_field = ft.TextField(hint_text='在此输入apikey',)
+    settings_dlg = ft.AlertDialog(
         title=ft.Text("Settings"),
         content=apikey_field,
         actions=[
-            ft.TextButton("Save", on_click=save_settings),
+            ft.TextButton("保存", on_click=save_settings),
+            ft.TextButton ( "取消", on_click=cancel_settings )
         ],
         actions_alignment=ft.MainAxisAlignment.END,
-        on_dismiss=lambda e: print("Modal dialog dismissed!"),
+        shape=ft.RoundedRectangleBorder(radius=10)
     )
 
-    def open_dlg(e):
-        page.dialog = dlg
-        dlg.open = True
-        page.update()
-
     def open_dlg_modal(e):
-        page.dialog = dlg_modal
-        dlg_modal.open = True
+        page.dialog = settings_dlg
+        settings_dlg.open = True
         page.update()
-
 
     settings_btn = ft.IconButton(
                     icon=ft.icons.SETTINGS_OUTLINED,
-                    # icon_color="blue400",
+                    icon_color="#9ecaff",
+        bgcolor='#202429',
                     icon_size=20,
                     tooltip="Settings",
         on_click=open_dlg_modal,
                 )
-    page.add(ft.Row(controls=[settings_btn],alignment=ft.MainAxisAlignment.END))
 
 
+    # 添加控件
+    page.add(
+        Row(
+            [
+                ElevatedButton(
+                    "导入聊天日志",
+                    icon=icons.UPLOAD_FILE,
+                    on_click=lambda _: pick_files_dialog.pick_files(
+                        allow_multiple=True
+                    ),
+                ),
+                ElevatedButton (
+                    "保存聊天日志",
+                    icon=icons.SAVE,
+                    on_click=lambda _ : save_file_dialog.save_file (),
+                    disabled=page.web,
+                ),
+                ElevatedButton (
+                    "打开聊天日志所在文件夹",
+                    icon=icons.FOLDER_OPEN,
+                    on_click=lambda _ : get_directory_dialog.get_directory_path (),
+                    disabled=page.web,
+                ),
+                settings_btn
+            ],
+    alignment = ft.MainAxisAlignment.END,
+        ),
+    )
 
-    # 设置滚动列表
+
+    '''
+    添加开局获取apikey窗口
+    '''
+    def save_settings_open(e):
+        settings_dlg.open = False
+        write_APIKEY(apikey_field.value)
+        read_APIKEY ()
+        page.update()
+
+    read_APIKEY()
+    if not openai.api_key:
+        apikey_field_open = ft.TextField ( label="输入你的apikey" )
+        page.dialog = ft.AlertDialog(
+            open=True,
+            modal=True,
+            title=ft.Text("欢迎使用BillyGPT"),
+            content=ft.Column([apikey_field_open], tight=True),
+            actions=[ft.ElevatedButton(text="开始使用",on_click=save_settings_open)],
+            actions_alignment="end",
+        )
+
+
+    # 设置主页面聊天区域的滚动列表
     gpt_text = ft.ListView ( expand=True, spacing=10, auto_scroll=True, padding=20 )
     page.add ( gpt_text )
 
-    # 调用
+    # 调用添加聊天行的方法
     def add_msg(e):
         gpt_text.controls.append ( chat_row('user',chat_text.value) )
         chat_text.value = ""
@@ -403,25 +512,33 @@ def ft_interface(page: ft.Page) :
 
 
     def chat(msg = None) :
-        message = get_combined_data(chat_json_path)
-        completion = openai.ChatCompletion.create (
-            model="gpt-3.5-turbo",
-            messages=message
-        )
-        gpt_msg = completion.choices[0].message['content']
-        d_msg = decode_chr ( gpt_msg )
-        return d_msg
+        try:
+            print(openai.api_key)
+            message = get_combined_data(chat_json_path)
+            completion = openai.ChatCompletion.create (
+                model="gpt-3.5-turbo",
+                messages=message
+            )
+            gpt_msg = completion.choices[0].message['content']
+            d_msg = decode_chr ( gpt_msg )
+            return d_msg
+        except openai.error.AuthenticationError as error:
+            gpt_text.controls.append(ft.Text(f'出现如下报错\n{str(error)}\n请在设置中更新可用的apikey'))
+            page.update()
+        except Exception as error:
+            gpt_text.controls.append ( ft.Text ( f'出现如下报错\n{str ( error )}\n请联系开发者' ) )
+            page.update()
 
 
 
     # 版本信息
-    ver_text = ft.Text('BillyGPT V3.1.0  By B1lli',size=10)
+    ver_text = ft.Text('BillyGPT V3.3.0  By B1lli',size=10)
     page.add(ver_text)
 
 
 if __name__ == '__main__':
     ft.app ( target=ft_interface, assets_dir='assets' )
-    # print ( time.time () )
+
 
 
 
