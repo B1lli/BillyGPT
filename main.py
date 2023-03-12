@@ -178,15 +178,6 @@ def save_now_chat(chat_json_path: str, role: str, content: str) -> str:
         'message': message
     })
 
-    # # 更新聊天信息中的关键字和摘要
-    # for chat in chats:
-    #     keywords = []
-    #     for msg in chat['message']:
-    #         for word in re.findall(r'\w+', msg['content']):
-    #             if len(word) > 1 and word not in keywords:
-    #                 keywords.append(word)
-    #         msg['keyword'] = keywords
-    #         msg['summary'] = '，'.join(keywords[:3]) + '...' if keywords else ''
 
     # 将新的聊天信息写入文件
     with open(chat_json_path, 'w') as f:
@@ -272,11 +263,12 @@ chat_json_path = create_chat_json ()
 读写API-KEY的函数
 '''
 # 定义 write_APIKEY 函数
-def write_APIKEY(APIKEY):
+def write_APIKEY(APIKEY=None):
 # 以追加模式打开或创建 APIKEY.txt 文件
     with open("APIKEY.txt", "a") as f:
         # 写入字符串并换行
-        f.write(APIKEY + "\n")
+        if APIKEY:f.write(APIKEY + "\n")
+
 
 
 # 定义 read_APIKEY 函数
@@ -330,8 +322,7 @@ def ft_interface(page: ft.Page) :
     page.dark_theme = page.theme
 
 
-    # if not openai.api_key:
-    #     write_APIKEY()
+
 
     '''
     （没写好）添加报错提示对话
@@ -380,7 +371,7 @@ def ft_interface(page: ft.Page) :
     get_directory_dialog = FilePicker(on_result=get_directory_result)
     directory_path = Text()
 
-    # hide all dialogs in overlay
+    # 隐藏所有
     page.overlay.extend([pick_files_dialog, save_file_dialog, get_directory_dialog])
 
 
@@ -428,7 +419,9 @@ def ft_interface(page: ft.Page) :
                 )
 
 
-    # 添加控件
+    '''
+    添加控件
+    '''
     page.add(
         Row(
             [
@@ -462,15 +455,16 @@ def ft_interface(page: ft.Page) :
     添加开局获取apikey窗口
     '''
     def save_settings_open(e):
-        settings_dlg.open = False
-        write_APIKEY(apikey_field.value)
-        read_APIKEY ()
+        open_setting_apikey_dlg.open = False
+        write_APIKEY(apikey_field_open.value)
+        openai.api_key = read_APIKEY ()
         page.update()
 
-    read_APIKEY()
+    write_APIKEY()
+    openai.api_key = read_APIKEY()
     if not openai.api_key:
         apikey_field_open = ft.TextField ( label="输入你的apikey" )
-        page.dialog = ft.AlertDialog(
+        open_setting_apikey_dlg = ft.AlertDialog(
             open=True,
             modal=True,
             title=ft.Text("欢迎使用BillyGPT"),
@@ -478,6 +472,8 @@ def ft_interface(page: ft.Page) :
             actions=[ft.ElevatedButton(text="开始使用",on_click=save_settings_open)],
             actions_alignment="end",
         )
+        page.dialog = open_setting_apikey_dlg
+        openai.api_key = read_APIKEY()
 
 
     # 设置主页面聊天区域的滚动列表
@@ -532,7 +528,7 @@ def ft_interface(page: ft.Page) :
 
 
     # 版本信息
-    ver_text = ft.Text('BillyGPT V3.3.0  By B1lli',size=10)
+    ver_text = ft.Text('BillyGPT V3.3.1  By B1lli',size=10)
     page.add(ver_text)
 
 
