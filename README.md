@@ -6,13 +6,15 @@
 A free chatGPT client with clean UI, support history chat modification, exporting and importing chat log
 
 # 功能
-包含所有chatGPT已有的功能
+包含几乎所有chatGPT已有的功能
 
-支持聊天记录本地保存、共享和断点续聊
+支持聊天记录本地保存、共享、导入
 
-支持修改聊天文本，让chatGPT以为自己说过某段话
+支持断点续聊
 
-使用自己的apikey，不会抹除聊天记录，不会上传聊天记录供openAI审查
+支持修改历史聊天记录与身份
+
+支持导入自己的apikey
 
 
 # 用法
@@ -21,3 +23,13 @@ A free chatGPT client with clean UI, support history chat modification, exportin
 # 框架
 基于flet开发，支持Windows/Android/MacOS/网页端部署
 
+# 未来将会开发的功能
+历史聊天记录的关键词提取与概括
+
+基于关键词的历史聊天记录精确回忆
+
+多实例并行发送请求（需要高级apikey）
+
+数据多格式导出
+
+markdown格式显示
