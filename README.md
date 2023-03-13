@@ -1,4 +1,5 @@
 # BillyGPT
+![BillyGPT界面预览](https://github.com/createrX12/BillyGPT/blob/main/function_preview.png?raw=true)
 # 简介
 一个chatGPT客户端，支持历史记录修改，聊天记录导出和导入
 
