@@ -17,7 +17,7 @@ from flet import (
     Text,
     icons,
 )
-
+import shutil
 
 # 赋值固定的api_key
 # 测试用
@@ -251,6 +251,54 @@ def read_APIKEY():
 
 
 '''
+读写settings.txt的函数
+'''
+
+
+# 读取settings.txt文件的设置项值，并返回一个字典
+def read_settings():
+    """
+    读取settings.txt文件，如果该文件不存在，则创建一个空白的文件
+    然后读取所有行，每行格式为：设置项名称 = 设置项的具体值
+    将每行拆分为键值对，添加到字典中，并返回该字典
+    :return: 包含settings.txt内的所有行的键值对形式的字典
+    """
+    settings_dict = {}
+    try:
+        with open('settings.txt', 'r', encoding='utf-8') as file:
+            for line in file:
+                line = line.strip()
+                if line:
+                    key, value = line.split('=', maxsplit=1)
+                    settings_dict[key.strip()] = value.strip()
+    except FileNotFoundError:
+        with open('settings.txt', 'w', encoding='utf-8') as file:
+            pass    # 如果文件不存在，则创建一个空白的txt文件，不需要做任何操作
+    return settings_dict
+
+
+# 将字典中的多个键值对写入/修改settings.txt文件的设置项值
+def write_settings(settings):
+    """
+    将多个键值对写入/更新settings.txt文件
+    如果文件不存在则创建一个空的文件
+    :param settings: 包含键值对的字典
+    """
+    with open('settings.txt', 'r+') as f:
+        lines = f.readlines()
+        f.seek(0)
+        for key, value in settings.items():
+            for i, line in enumerate(lines):
+                if key in line:
+                    lines[i] = key + ' = ' + value + '\n'
+                    break
+            else:
+                f.write(key + ' = ' + value + '\n')
+        f.writelines(lines)
+
+
+
+'''
 其他函数
 '''
 
@@ -279,6 +327,10 @@ def markdown_check(gpt_msg):
     pass
 
 
+
+
+
+
 '''
 程序主窗体
 '''
@@ -302,7 +354,7 @@ def ft_interface(page: ft.Page):
     添加选择上传文件、保存文件、打开文件夹按钮
     '''
     # 导入聊天记录
-    def pick_files_result(e: FilePickerResultEvent):
+    def import_chatlog(e: FilePickerResultEvent):
         try:
             gpt_text.controls.clear()
             selected_file = (
@@ -320,12 +372,13 @@ def ft_interface(page: ft.Page):
             gpt_text.controls.append(
                 Text(f'出现如下报错\n{e}\n请检查导入的聊天记录是否正确，或联系开发者微信B1lli_official'))
 
-    pick_files_dialog = FilePicker(on_result=pick_files_result)
+    import_chatlog_dialog = FilePicker(on_result=import_chatlog)
 
-    # 导出聊天记录（还没做）
+    # 导出聊天记录
     def save_file_result(e: FilePickerResultEvent):
         save_file_path.value = e.path if e.path else "Cancelled!"
-        save_file_path.update()
+        if save_file_path.value != "Cancelled!":
+            shutil.copy(chat_json_path,save_file_path.value)
 
     save_file_dialog = FilePicker(on_result=save_file_result)
     save_file_path = Text()
@@ -340,7 +393,7 @@ def ft_interface(page: ft.Page):
 
     # 隐藏所有
     page.overlay.extend(
-        [pick_files_dialog, save_file_dialog, get_directory_dialog])
+        [import_chatlog_dialog, save_file_dialog, get_directory_dialog])
 
     '''
     添加设置对话和按钮
@@ -427,8 +480,8 @@ def ft_interface(page: ft.Page):
             [
                 ElevatedButton(
                     "导入聊天日志",
-                    icon=icons.UPLOAD_FILE,
-                    on_click=lambda _: pick_files_dialog.pick_files(
+                    icon=icons.FILE_DOWNLOAD_OUTLINED,
+                    on_click=lambda _: import_chatlog_dialog.pick_files(
                         allowed_extensions=['json'],
                         allow_multiple=False,
                         dialog_title='选择聊天记录文件导入',
@@ -436,15 +489,9 @@ def ft_interface(page: ft.Page):
                     ),
                 ),
                 ElevatedButton(
-                    "保存聊天日志",
-                    icon=icons.SAVE,
+                    "导出聊天日志",
+                    icon=icons.FILE_UPLOAD_OUTLINED,
                     on_click=lambda _: save_file_dialog.save_file(),
-                    disabled=page.web,
-                ),
-                ElevatedButton(
-                    "打开聊天日志所在文件夹",
-                    icon=icons.FOLDER_OPEN,
-                    on_click=lambda _: get_directory_dialog.get_directory_path(),
                     disabled=page.web,
                 ),
                 settings_btn
@@ -472,6 +519,9 @@ def ft_interface(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.add(view)
 
+    '''
+    聊天方法，向api发送请求
+    '''
     def chat(msg=None):
         try:
             print(openai.api_key)
@@ -495,7 +545,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V3.4.0  哔哩哔哩@B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V3.5.0  By B1lli', size=10)
     page.add(ver_text)
 
 
