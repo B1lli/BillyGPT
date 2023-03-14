@@ -1,9 +1,8 @@
 # BillyGPT
-![BillyGPT界面预览](https://github.com/createrX12/BillyGPT/blob/main/function_preview.png?raw=true)
-# 简介
-一个chatGPT客户端，支持历史记录修改，聊天记录导出和导入
 
-A free chatGPT client with clean UI, support history chat modification, exporting and importing chat log
+BillyGPT - 免费开源的全平台傻瓜式 ChatGPT 本地客户端，支持断点续聊、修改历史对话、本地聊天记录存储导入导出、添加自己的 apikey
+
+![BillyGPT界面预览](https://github.com/createrX12/BillyGPT/blob/main/pic/function_preview.png?raw=true)
 
 # 功能
 包含几乎所有chatGPT已有的功能
@@ -24,7 +23,9 @@ A free chatGPT client with clean UI, support history chat modification, exportin
 基于flet开发，支持Windows/Android/MacOS/网页端部署
 
 # 未来将会开发的功能
-历史聊天记录的关键词提取与概括
+自定义将哪些历史对话纳入新消息
+
+历史聊天记录的关键词提取与概括，并添加在左侧
 
 基于关键词的历史聊天记录精确回忆
 
@@ -33,3 +34,10 @@ A free chatGPT client with clean UI, support history chat modification, exportin
 数据多格式导出
 
 markdown格式显示
+
+内置优质prompt
+
+社区化
+
+# 加入我们
+![BillyGPT微信群](https://github.com/createrX12/BillyGPT/blob/main/pic/join_us.jpg?raw=true)![BillyGPT微信群](https://github.com/createrX12/BillyGPT/blob/main/pic/join_us_qq.jpg?raw=true)
