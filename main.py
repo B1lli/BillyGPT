@@ -237,7 +237,7 @@ def write_APIKEY(APIKEY=None):
     with open("APIKEY.txt", "a") as f:
         # 写入字符串并换行
         if APIKEY:
-            f.write(APIKEY + "\n")
+            f.write(APIKEY.strip() + "\n")
 
 
 # 定义 read_APIKEY 函数
@@ -434,9 +434,9 @@ def ft_interface(page: ft.Page):
     添加启动应用程序获取apikey窗口
     '''
     def save_settings_open(e):
-        open_setting_apikey_dlg.open = False
         write_APIKEY(apikey_field_open.value)
         openai.api_key = read_APIKEY()
+        open_setting_apikey_dlg.open = False
         page.update()
 
     write_APIKEY()
@@ -518,7 +518,7 @@ def ft_interface(page: ft.Page):
     chatPO_btn = ft.ElevatedButton(
         "思维链优化对话",
         on_click=add_msg_composition,
-        tooltip='认真提问'
+        tooltip='认真提问\n仅在对话开始时可用'
     )
     view = ft.Column(
         controls=[
@@ -597,7 +597,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V4.0.0  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V4.0.2  By B1lli', size=10)
     page.add(ver_text)
 
 

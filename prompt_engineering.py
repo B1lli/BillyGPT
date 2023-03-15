@@ -8,13 +8,19 @@ import openai
 
 # 定义 read_APIKEY 函数
 def read_APIKEY():
-    # 以读取模式打开 APIKEY.txt 文件
-    with open("APIKEY.txt", "r") as f:
-        # 读取所有行并存入列表
-        lines = f.readlines()
-        # 如果列表不为空，返回最后一行的值，去掉换行符
-        if lines:
-            return lines[-1].strip()
+    try:
+        # 以读取模式打开 APIKEY.txt 文件
+        with open("APIKEY.txt", "r") as f:
+            # 读取所有行并存入列表
+            lines = f.readlines()
+            # 如果列表不为空，返回最后一行的值，去掉换行符
+            if lines:
+                return lines[-1].strip()
+    except FileNotFoundError:
+        with open ( "APIKEY.txt", "a" ) as f :
+            pass
+
+
 
 openai.api_key = read_APIKEY()
 
