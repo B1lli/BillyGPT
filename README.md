@@ -1,6 +1,6 @@
 # BillyGPT
 
-BillyGPT - 免费开源的全平台傻瓜式 ChatGPT 本地客户端，支持断点续聊、修改历史对话、本地聊天记录存储导入导出、添加自己的 apikey
+BillyGPT - 基于提示工程，可自动帮你优化提示的，免费开源的全平台傻瓜式 ChatGPT 本地客户端，支持断点续聊、修改历史对话、本地聊天记录存储导入导出、添加自己的 apikey
 
 ![BillyGPT界面预览](https://github.com/createrX12/BillyGPT/blob/main/pic/function_preview.png?raw=true)
 
@@ -15,6 +15,7 @@ BillyGPT - 免费开源的全平台傻瓜式 ChatGPT 本地客户端，支持断
 
 支持导入自己的apikey
 
+支持自动分析提问或要求中的结构，并基于结构给出详细解答
 
 # 用法
 安装requirements.txt中的依赖项后，直接运行main.py
