@@ -7,7 +7,7 @@ import time
 import openai
 import flet as ft
 import re
-
+import shutil
 from flet import (
     ElevatedButton,
     FilePicker,
@@ -17,7 +17,8 @@ from flet import (
     Text,
     icons,
 )
-import shutil
+from prompt_engineering import *
+
 
 # 赋值固定的api_key
 # 测试用
@@ -297,7 +298,6 @@ def write_settings(settings):
         f.writelines(lines)
 
 
-
 '''
 其他函数
 '''
@@ -325,10 +325,6 @@ def decode_chr(s):
 # markdown检测
 def markdown_check(gpt_msg):
     pass
-
-
-
-
 
 
 '''
@@ -378,7 +374,7 @@ def ft_interface(page: ft.Page):
     def save_file_result(e: FilePickerResultEvent):
         save_file_path.value = e.path if e.path else "Cancelled!"
         if save_file_path.value != "Cancelled!":
-            shutil.copy(chat_json_path,save_file_path.value)
+            shutil.copy(chat_json_path, save_file_path.value)
 
     save_file_dialog = FilePicker(on_result=save_file_result)
     save_file_path = Text()
@@ -461,15 +457,28 @@ def ft_interface(page: ft.Page):
         page.dialog = open_setting_apikey_dlg
         openai.api_key = read_APIKEY()
 
-
     '''
     添加聊天行
     '''
     def add_msg(e):
+        chatPO_btn.disabled = True
         gpt_text.controls.append(chat_row('user', chat_text.value))
         chat_text.value = ""
         page.update()
-        gpt_text.controls.append(chat_row('assistant', chat(chat_text.value)))
+        gpt_text.controls.append(
+            chat_row(
+                'assistant', chatGPT(
+                    chat_text.value)))
+        page.update()
+
+    def add_msg_composition(e):
+        chatPO_btn.disabled = True
+        gpt_text.controls.append(chat_row('user', chat_text.value))
+        gpt_text.controls.append(
+            chat_row(
+                'assistant',
+                chatGPT_PO(
+                    chat_text.value)))
         page.update()
 
     '''
@@ -505,12 +514,19 @@ def ft_interface(page: ft.Page):
         filled=True,
         expand=True,
         multiline=True)
+    chat_btn = ft.ElevatedButton("对话", on_click=add_msg, tooltip='随便聊聊')
+    chatPO_btn = ft.ElevatedButton(
+        "思维链优化对话",
+        on_click=add_msg_composition,
+        tooltip='认真提问'
+    )
     view = ft.Column(
         controls=[
             ft.Row(
                 controls=[
                     chat_text,
-                    ft.ElevatedButton("对话", on_click=add_msg)
+                    chat_btn,
+                    chatPO_btn
                 ]
             ),
         ],
@@ -522,9 +538,9 @@ def ft_interface(page: ft.Page):
     '''
     聊天方法，向api发送请求
     '''
-    def chat(msg=None):
+    def chatGPT(msg=None):
         try:
-            print(openai.api_key)
+            # print(openai.api_key)
             message = get_combined_data(chat_json_path)
             chatGPT_raw_response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
@@ -532,7 +548,43 @@ def ft_interface(page: ft.Page):
             )
             chatGPT_response = decode_chr(
                 chatGPT_raw_response.choices[0].message['content'])
-            return chatGPT_response
+            return chatGPT_response.strip()
+        except openai.error.AuthenticationError as error:
+            gpt_text.controls.append(
+                ft.Text(f'出现如下报错\n{str(error)}\n请在设置中更新可用的apikey'))
+            page.update()
+        except Exception as error:
+            gpt_text.controls.append(
+                ft.Text(f'出现如下报错\n{str ( error )}\n请联系开发者微信B1lli_official'))
+            page.update()
+
+    def chatGPT_PO(initial_prompt=None):
+        '''
+        PO:Prompt Optimization
+        该方法是提示优化方法，工作原理如下：
+        它会尝试判定用户输入的每一条提示，并进行类别判断。
+        如果判断是问题或者要求，它会分析该类型提示一般需要哪些信息
+        对于缺少细节信息的提示，它会向用户提问具体细节
+        :param initial_prompt:初始prompt
+        :return chatGPT_response.strip():基于提示工程思维链优化后的chatGPT方法
+        '''
+        try:
+            initial_prompt = chat_text.value
+            chat_text.value = ''
+            page.update()
+            gpt_text.controls.append(
+                ft.Text(f'正在分析提示词组成结构，请耐心等待', color='#1cc9a0'))
+            page.update()
+            composition_analysis_message = prompt_composition_analysis(
+                initial_prompt)
+            gpt_text.controls.append(
+                ft.Text(f'提示词组成结构分析完毕，正在根据组成结构逐步生成详细结果，耗时较长，请耐心等待', color='#1cc9a0'))
+            page.update()
+            chatGPT_raw_response = composition_stepped_reply(
+                composition_analysis_message)
+            chatGPT_response = decode_chr(
+                chatGPT_raw_response.choices[0].message['content'])
+            return chatGPT_response.strip()
         except openai.error.AuthenticationError as error:
             gpt_text.controls.append(
                 ft.Text(f'出现如下报错\n{str(error)}\n请在设置中更新可用的apikey'))
@@ -545,7 +597,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V3.5.0  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V4.0.0  By B1lli', size=10)
     page.add(ver_text)
 
 
