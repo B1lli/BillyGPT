@@ -7,8 +7,6 @@
 import openai
 
 
-openai.api_key = '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'
-
 # 字符转码
 import re
 def decode_chr(s):
