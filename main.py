@@ -504,6 +504,10 @@ def ft_interface(page: ft.Page):
         open_setting_apikey_dlg.open = False
         page.update()
 
+    get_apikey_btn = ft.ElevatedButton(
+        '从openAI获取apikey',
+        on_click=lambda _:page.launch_url('https://platform.openai.com/account/api-keys')
+    )
     write_APIKEY()
     openai.api_key = read_APIKEY()
     if not openai.api_key:
@@ -512,7 +516,9 @@ def ft_interface(page: ft.Page):
             open=True,
             modal=True,
             title=ft.Text("欢迎使用BillyGPT"),
-            content=ft.Column([apikey_field_open], tight=True),
+            content=ft.Column(
+                [apikey_field_open,get_apikey_btn],
+                tight=True),
             actions=[
                 ft.ElevatedButton(
                     text="开始使用",
@@ -678,7 +684,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V4.2.0  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V4.2.1  By B1lli', size=10)
     page.add(ver_text)
 
 
