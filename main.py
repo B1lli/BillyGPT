@@ -297,6 +297,35 @@ def write_settings(settings):
                 f.write(key + ' = ' + value + '\n')
         f.writelines(lines)
 
+'''
+读写字体文件的函数
+'''
+# def replace_font_file(path):
+#
+#     old_path = os.path.join(".", "assets", "font.ttf")
+#     try:
+#         os.remove(old_path)
+#         shutil.copy ( path,old_path )
+#         print ( "替换成功！" )
+#     except OSError as e:
+#         print ( f"替换失败！报错如下：\n{e}" )
+#         pass
+
+def replace_font_file(path):
+    old_path = os.path.join(".", "asset", "font.ttf")
+    try:
+        os.remove(old_path)
+    except OSError:
+        pass
+
+    try:
+        shutil.copy(path, 'assets/font.ttf')
+    except FileNotFoundError:
+        with open('assets/font.ttf','a'):
+            pass
+        shutil.copy(path, 'assets/font.ttf')
+    print("替换成功！")
+
 
 '''
 其他函数
@@ -404,10 +433,39 @@ def ft_interface(page: ft.Page):
         settings_dlg.open = False
         page.update()
 
+    def change_font_clicked(e: FilePickerResultEvent):
+        selected_file = (
+            ", ".join ( map ( lambda f : f.path, e.files )
+                        ) if e.files else "Cancelled!"
+        )
+        replace_font_file(selected_file)
+        pass
+
+    change_font_dialog = FilePicker(on_result=change_font_clicked)
+    page.overlay.extend([change_font_dialog])
+
     apikey_field = ft.TextField(hint_text='在此输入apikey',)
+    my_wechat = ft.Text('如有任何bug请联系我：B1lli_official',size=15)
+    github_page_btn = ft.ElevatedButton(
+        '打开本项目的GitHub页面',
+        tooltip='如果你给这个项目点了star，你就是忠实用户了，请打开本页面后进入项目群！',
+        on_click=lambda _:page.launch_url('https://github.com/createrX12/BillyGPT')
+    )
+    change_font_btn = ft.ElevatedButton(
+        '选择新的字体文件',
+        on_click=lambda _:change_font_dialog.pick_files(
+            allowed_extensions=['ttf'],
+            allow_multiple=False,
+            dialog_title='选择字体文件导入',
+        )
+    )
     settings_dlg = ft.AlertDialog(
         title=ft.Text("Settings"),
-        content=apikey_field,
+        content=ft.Column(
+            [apikey_field,my_wechat,github_page_btn,change_font_btn],
+            height=200,
+
+        ),
         actions=[
             ft.TextButton("保存", on_click=save_settings),
             ft.TextButton("取消", on_click=cancel_settings)
@@ -558,6 +616,7 @@ def ft_interface(page: ft.Page):
                 ft.Text(f'出现如下报错\n{str ( error )}\n请联系开发者微信B1lli_official'))
             page.update()
 
+
     def chatGPT_PO(initial_prompt=None):
         '''
         PO:Prompt Optimization
@@ -597,7 +656,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V4.0.2  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V4.1.0  By B1lli', size=10)
     page.add(ver_text)
 
 
