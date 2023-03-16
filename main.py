@@ -369,7 +369,7 @@ def ft_interface(page: ft.Page):
     page.dark_theme = page.theme
 
     # 设置主页面聊天区域的滚动列表
-    gpt_text = ft.ListView(
+    chat_area = ft.ListView(
         expand=True,
         spacing=10,
         auto_scroll=True,
@@ -381,7 +381,7 @@ def ft_interface(page: ft.Page):
     # 导入聊天记录
     def import_chatlog(e: FilePickerResultEvent):
         try:
-            gpt_text.controls.clear()
+            chat_area.controls.clear()
             selected_file = (
                 ", ".join(map(lambda f: f.path, e.files)
                           ) if e.files else "Cancelled!"
@@ -391,10 +391,10 @@ def ft_interface(page: ft.Page):
             for chat_row_content in full_chatlog:
                 role = chat_row_content['role']
                 content = chat_row_content['content']
-                gpt_text.controls.append(chat_row(role, content))
+                chat_area.controls.append(chat_row(role, content))
                 page.update()
         except Exception as e:
-            gpt_text.controls.append(
+            chat_area.controls.append(
                 Text(f'出现如下报错\n{e}\n请检查导入的聊天记录是否正确，或联系开发者微信B1lli_official'))
 
     import_chatlog_dialog = FilePicker(on_result=import_chatlog)
@@ -421,6 +421,18 @@ def ft_interface(page: ft.Page):
         [import_chatlog_dialog, save_file_dialog, get_directory_dialog])
 
     '''
+    添加改变字体按钮
+    并调用改变字体方法
+    '''
+    def change_font_clicked(e: FilePickerResultEvent):
+        selected_file = (
+            ", ".join ( map ( lambda f : f.path, e.files )
+                        ) if e.files else "Cancelled!"
+        )
+        replace_font_file(selected_file)
+
+
+    '''
     添加设置对话和按钮
     '''
     def save_settings(e):
@@ -433,13 +445,8 @@ def ft_interface(page: ft.Page):
         settings_dlg.open = False
         page.update()
 
-    def change_font_clicked(e: FilePickerResultEvent):
-        selected_file = (
-            ", ".join ( map ( lambda f : f.path, e.files )
-                        ) if e.files else "Cancelled!"
-        )
-        replace_font_file(selected_file)
-        pass
+
+
 
     change_font_dialog = FilePicker(on_result=change_font_clicked)
     page.overlay.extend([change_font_dialog])
@@ -520,10 +527,10 @@ def ft_interface(page: ft.Page):
     '''
     def add_msg(e):
         chatPO_btn.disabled = True
-        gpt_text.controls.append(chat_row('user', chat_text.value))
+        chat_area.controls.append(chat_row('user', chat_text.value))
         chat_text.value = ""
         page.update()
-        gpt_text.controls.append(
+        chat_area.controls.append(
             chat_row(
                 'assistant', chatGPT(
                     chat_text.value)))
@@ -531,8 +538,8 @@ def ft_interface(page: ft.Page):
 
     def add_msg_composition(e):
         chatPO_btn.disabled = True
-        gpt_text.controls.append(chat_row('user', chat_text.value))
-        gpt_text.controls.append(
+        chat_area.controls.append(chat_row('user', chat_text.value))
+        chat_area.controls.append(
             chat_row(
                 'assistant',
                 chatGPT_PO(
@@ -540,11 +547,26 @@ def ft_interface(page: ft.Page):
         page.update()
 
     '''
+    添加清空页面方法
+    '''
+    def clear_page():
+        global chat_json_path
+        chat_area.controls.clear ()
+        page.update()
+        chat_json_path = create_chat_json()
+        pass
+
+    '''
     设置布局 添加控件
     '''
     page.add(
         Row(
             [
+                ElevatedButton (
+                    "清空聊天日志",
+                    icon=icons.CLEANING_SERVICES,
+                    on_click=lambda _ : clear_page(),
+                ),
                 ElevatedButton(
                     "导入聊天日志",
                     icon=icons.FILE_DOWNLOAD_OUTLINED,
@@ -566,7 +588,7 @@ def ft_interface(page: ft.Page):
             alignment=ft.MainAxisAlignment.END,
         ),
     )
-    page.add(gpt_text)
+    page.add(chat_area)
     chat_text = ft.TextField(
         hint_text="想和chatGPT说些什么？",
         filled=True,
@@ -608,11 +630,11 @@ def ft_interface(page: ft.Page):
                 chatGPT_raw_response.choices[0].message['content'])
             return chatGPT_response.strip()
         except openai.error.AuthenticationError as error:
-            gpt_text.controls.append(
+            chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str(error)}\n请在设置中更新可用的apikey'))
             page.update()
         except Exception as error:
-            gpt_text.controls.append(
+            chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str ( error )}\n请联系开发者微信B1lli_official'))
             page.update()
 
@@ -631,12 +653,12 @@ def ft_interface(page: ft.Page):
             initial_prompt = chat_text.value
             chat_text.value = ''
             page.update()
-            gpt_text.controls.append(
+            chat_area.controls.append(
                 ft.Text(f'正在分析提示词组成结构，请耐心等待', color='#1cc9a0'))
             page.update()
             composition_analysis_message = prompt_composition_analysis(
                 initial_prompt)
-            gpt_text.controls.append(
+            chat_area.controls.append(
                 ft.Text(f'提示词组成结构分析完毕，正在根据组成结构逐步生成详细结果，耗时较长，请耐心等待', color='#1cc9a0'))
             page.update()
             chatGPT_raw_response = composition_stepped_reply(
@@ -645,18 +667,18 @@ def ft_interface(page: ft.Page):
                 chatGPT_raw_response.choices[0].message['content'])
             return chatGPT_response.strip()
         except openai.error.AuthenticationError as error:
-            gpt_text.controls.append(
+            chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str(error)}\n请在设置中更新可用的apikey'))
             page.update()
         except Exception as error:
-            gpt_text.controls.append(
+            chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str ( error )}\n请联系开发者微信B1lli_official'))
             page.update()
 
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V4.1.0  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V4.2.0  By B1lli', size=10)
     page.add(ver_text)
 
 
