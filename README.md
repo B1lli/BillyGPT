@@ -41,4 +41,4 @@ markdown格式显示
 社区化
 
 # 加入我们
-![BillyGPT微信群](https://github.com/createrX12/BillyGPT/blob/main/pic/join_us.jpg?raw=true)![BillyGPT微信群](https://github.com/createrX12/BillyGPT/blob/main/pic/join_us_qq.jpg?raw=true)
+![BillyGPT微信群](https://github.com/createrX12/BillyGPT/blob/main/pic/join_us.jpg?raw=true =414x588)![BillyGPT微信群](https://github.com/createrX12/BillyGPT/blob/main/pic/join_us_qq.jpg?raw=true =375x673)
