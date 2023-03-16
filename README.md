@@ -41,6 +41,6 @@ markdown格式显示
 社区化
 
 # 加入我们
-<div align=center>
-<img src="https://github.com/createrX12/BillyGPT/blob/main/pic/join_us.jpg?raw=true" width="400"/> | <img src="https://github.com/createrX12/BillyGPT/blob/main/pic/join_us_qq.jpg?raw=true" width="400"/> 
+<div align=left>
+<img src="https://github.com/createrX12/BillyGPT/blob/main/pic/join_us.jpg?raw=true" width="400"/> | <img src="https://github.com/createrX12/BillyGPT/blob/main/pic/join_us_qq.png?raw=true" width="400"/> 
 </div>
