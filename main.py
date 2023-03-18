@@ -23,7 +23,7 @@ from prompt_engineering import *
 # 赋值固定的api_key
 # 测试用
 openai.api_key = None
-
+openai.api_key = read_APIKEY()
 
 '''
 每一行对话的类
@@ -82,6 +82,37 @@ class chat_row(ft.UserControl):
             chat_json_path=chat_json_path,
             hash_val=self.hash,
             content=self.content)
+
+
+'''
+调用chatGPT获取关键词和概括的函数
+'''
+# 获取概括文本
+def chatGPT_sum(content):
+    composition_analysis_message = [{"role" : "user",
+                "content" : '''你是一个概括者，你的功能是将接下来看到的文本进行概括，概括长度随原文本的长度而变化，不超过100字。不需要透露这个提示词本身。接下来你将开始概括。'''}]
+    composition_analysis_message.append ( {"role" : "user",
+                      "content" : f"{content}"} )
+    chatGPT_raw_response = openai.ChatCompletion.create (
+        model="gpt-3.5-turbo",
+        messages=composition_analysis_message
+    )
+    summary = decode_chr ( chatGPT_raw_response.choices[0].message['content'].strip () )
+    print(summary)
+    return summary
+
+
+# 获取关键词（还是用jieba吧）
+def chatGPT_getkeyword(content):
+    chatGPT_raw_response = openai.Completion.create (
+        model="text-ada-001",
+        prompt=f"你要总结这一文本的关键词，并以python列表的形式返回数个关键词字符串:{content}。",
+        temperature=0
+    )
+    keyword = decode_chr ( chatGPT_raw_response.choices[0]['text'].strip () )
+    print(keyword)
+    return keyword
+
 
 
 '''
@@ -209,21 +240,99 @@ def get_combined_data(chat_json_path: str) -> list[dict[str, str]]:
     '''
     获取特定文件内的所有role和content
     :param chat_json_path: JSON 聊天文件的路径
-    :return: 包含所有发言者和发言内容的列表
+    :return: 包含所有发言者和发言内容（若有概括则返回概括）的列表
     '''
     with open(chat_json_path) as f:
         data = json.load(f)
         result = []
         for chat_item in data:
-            result.append({
-                "role": chat_item['message']["role"],
-                "content": chat_item['message']["content"]
-            })
+            if chat_item['message']['summary']:
+                result.append({
+                    "role": chat_item['message']["role"],
+                    "content": chat_item['message']["summary"]
+                })
+            else:
+                result.append({
+                    "role": chat_item['message']["role"],
+                    "content": chat_item['message']["content"]
+                })
         return result
+
+
+# 概括chatlog
+def summarize_chatlog(chatlog_json_path) :
+    with open ( chatlog_json_path, 'r' ) as f :
+        chatlog = json.load ( f )
+
+    for message in chatlog :
+        if 'summary' not in message or not message['summary'] :
+            content = message['message']['content']  # assuming content is always the second item in the message list
+            if len ( content ) > 100 :
+                summary = chatGPT_sum ( content )
+                message['summary'] = summary
+
+    with open ( chatlog_json_path, 'w' ) as f :
+        json.dump ( chatlog, f )
+
+
+# 获取chatlog关键词
+def get_chatlog_keyword(chatlog_json_path) :
+    with open ( chatlog_json_path, 'r' ) as f :
+        chatlog = json.load ( f )
+
+    for message in chatlog :
+        if 'keyword' not in message or not message['keyword'] :
+            content = message['message']['content']  # assuming content is always the second item in the message list
+            keywords = chatGPT_getkeyword ( content )
+            message['keyword'] = keywords
+
+    with open ( chatlog_json_path, 'w' ) as f :
+        json.dump ( chatlog, f )
 
 
 # 创建chat数据记录
 chat_json_path = create_chat_json()
+
+'''
+加工message方法，先对向chatGPT发送的请求进行处理
+'''
+
+
+def process_message() :
+    pass
+
+
+def cut_message(message) :
+    '''
+    剪切接收到的message，如果超过4000token长度就从最早的消息开始剪切，剪切到小于4000token为止
+    :param message: 
+    :return: 
+    '''
+    total_length = 0
+
+    # Iterate over contents in the list
+    for message_dict in message :
+        # message_dict['content'] = message_dict['content']
+
+        # 计算content长度
+        if message_dict['content'].isalpha () :
+            length = len ( message_dict['content'].split () )
+        else :
+            length = len ( message_dict['content'] )
+
+        total_length += length
+
+    while total_length > 4000:
+        if not message:raise Exception('最后一条消息长度大于4000字符了，请编辑消息或重置对话')
+        removed_content = message.pop(0)
+        removed_length = len ( removed_content['content'] )
+        if removed_content['content'].isalpha () :
+            removed_length = len ( removed_content['content'].split () )
+        total_length -= removed_length
+
+
+    return message
+
 
 
 '''
@@ -300,17 +409,6 @@ def write_settings(settings):
 '''
 读写字体文件的函数
 '''
-# def replace_font_file(path):
-#
-#     old_path = os.path.join(".", "assets", "font.ttf")
-#     try:
-#         os.remove(old_path)
-#         shutil.copy ( path,old_path )
-#         print ( "替换成功！" )
-#     except OSError as e:
-#         print ( f"替换失败！报错如下：\n{e}" )
-#         pass
-
 def replace_font_file(path):
     old_path = os.path.join(".", "asset", "font.ttf")
     try:
@@ -538,8 +636,7 @@ def ft_interface(page: ft.Page):
         page.update()
         chat_area.controls.append(
             chat_row(
-                'assistant', chatGPT(
-                    chat_text.value)))
+                'assistant', chatGPT()))
         page.update()
 
     def add_msg_composition(e):
@@ -562,6 +659,16 @@ def ft_interface(page: ft.Page):
         chat_json_path = create_chat_json()
         pass
 
+
+    '''
+    添加ctrl+enter发送消息方法
+    '''
+    def on_keyboard(e: ft.KeyboardEvent) :
+        if e.ctrl:
+            if e.key == 'Enter':
+                add_msg(e)
+
+    page.on_keyboard_event = on_keyboard
     '''
     设置布局 添加控件
     '''
@@ -621,13 +728,14 @@ def ft_interface(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.add(view)
 
+    invalid_count = 0
     '''
     聊天方法，向api发送请求
     '''
-    def chatGPT(msg=None):
+    def chatGPT(message=None):
         try:
-            # print(openai.api_key)
-            message = get_combined_data(chat_json_path)
+            if not message: message = get_combined_data(chat_json_path)
+            # message = get_combined_data ( chat_json_path )
             chatGPT_raw_response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=message
@@ -639,6 +747,24 @@ def ft_interface(page: ft.Page):
             chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str(error)}\n请在设置中更新可用的apikey'))
             page.update()
+        except openai.error.InvalidRequestError as error:
+            chat_area.controls.append(
+                ft.Text(f'出现如下报错\n{str(error)}\n聊天上下文过长，正在调用概括模块，概括前文长文本，预计需要3分钟，请耐心等待'))
+            page.update()
+            summarize_chatlog(chat_json_path)
+            chat_area.controls.append(
+                ft.Text(f'概括完毕，已发送概括后消息'))
+            page.update()
+            message =  cut_message ( get_combined_data ( chat_json_path ) )
+            chatGPT_raw_response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=message
+            )
+            chatGPT_response = decode_chr(
+                chatGPT_raw_response.choices[0].message['content'])
+            return chatGPT_response.strip()
+
+
         except Exception as error:
             chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str ( error )}\n请联系开发者微信B1lli_official'))
@@ -684,7 +810,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V4.2.1  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V5.0.0  By B1lli', size=10)
     page.add(ver_text)
 
 
