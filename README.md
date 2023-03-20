@@ -70,6 +70,7 @@ markdown格式显示
 社区化
 
 # 加入我们
+可以在群里拿到软件源文件，也可以向我反馈任何软件问题
 <div align=left>
 <img src="https://s2.loli.net/2023/03/20/ydiOH4QIjK8PRgc.jpg" width="400"/> | <img src="https://s2.loli.net/2023/03/20/XYn7EOUaT4Sesdb.png" width="400"/> 
 </div>
