@@ -2,7 +2,7 @@
 
 BillyGPT - 基于提示工程，可自动帮你优化提示的，免费开源的全平台傻瓜式 ChatGPT 本地客户端，支持断点续聊、修改历史对话、本地聊天记录存储导入导出、添加自己的 apikey
 
-![BillyGPT界面预览](https://sm.ms/image/Dqv932GTMre8kA5)
+![function_preview2.png](https://s2.loli.net/2023/03/20/Dqv932GTMre8kA5.png)
 
 # 功能
 包含几乎所有chatGPT已有的功能
@@ -42,5 +42,5 @@ markdown格式显示
 
 # 加入我们
 <div align=left>
-<img src="https://sm.ms/image/XYn7EOUaT4Sesdb" width="400"/> | <img src="https://sm.ms/image/ydiOH4QIjK8PRgc" width="400"/> 
+<img src="https://s2.loli.net/2023/03/20/ydiOH4QIjK8PRgc.jpg" width="400"/> | <img src="https://s2.loli.net/2023/03/20/XYn7EOUaT4Sesdb.png" width="400"/> 
 </div>
