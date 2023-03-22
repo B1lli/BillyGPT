@@ -113,6 +113,16 @@ def chatGPT_getkeyword(content):
     print(keyword)
     return keyword
 
+# 获取关键词（还是用jieba吧）
+def chatGPT_getsummary(content):
+    chatGPT_raw_response = openai.Completion.create (
+        model="text-ada-001",
+        prompt=f"你要在10字以内概括这段文本:{content}。",
+        temperature=0
+    )
+    keyword = decode_chr ( chatGPT_raw_response.choices[0]['text'].strip () )
+    print(keyword)
+    return keyword
 
 
 '''
@@ -176,7 +186,7 @@ def save_now_chat(chat_json_path: str, role: str, content: str) -> str:
 
     # 将新的聊天信息写入文件
     with open(chat_json_path, 'w') as f:
-        json.dump(chats, f, default=str)
+        json.dump(chats, f, default=str,indent=4)
 
     return hash_val
 
@@ -208,7 +218,7 @@ def renew_now_chat(chat_json_path: str, hash_val: str,
 
     # 将更新后的数据写回文件
     with open(chat_json_path, 'w') as f:
-        json.dump(data, f, default=str)
+        json.dump(data, f, default=str,indent=4)
 
 
 # 根据聊天信息的哈希值，获取单个键值对内的role和content
@@ -272,7 +282,7 @@ def summarize_chatlog(chatlog_json_path) :
                 message['summary'] = summary
 
     with open ( chatlog_json_path, 'w' ) as f :
-        json.dump ( chatlog, f )
+        json.dump ( chatlog, f ,indent=4)
 
 
 # 获取chatlog关键词
@@ -287,11 +297,13 @@ def get_chatlog_keyword(chatlog_json_path) :
             message['keyword'] = keywords
 
     with open ( chatlog_json_path, 'w' ) as f :
-        json.dump ( chatlog, f )
+        json.dump ( chatlog, f,indent=4 )
 
 
 # 创建chat数据记录
 chat_json_path = create_chat_json()
+
+
 
 '''
 加工message方法，先对向chatGPT发送的请求进行处理
@@ -502,6 +514,13 @@ def ft_interface(page: ft.Page):
         save_file_path.value = e.path if e.path else "Cancelled!"
         if save_file_path.value != "Cancelled!":
             shutil.copy(chat_json_path, save_file_path.value)
+            path = save_file_path.value
+            with open ( path, 'r', encoding='utf-8' ) as f :
+                content = f.read ()
+                processed_content = decode_chr ( content )
+            with open ( path, 'w', encoding='utf-8' ) as f :
+                f.write ( processed_content )
+
 
     save_file_dialog = FilePicker(on_result=save_file_result)
     save_file_path = Text()
@@ -684,7 +703,7 @@ def ft_interface(page: ft.Page):
                     "导入聊天日志",
                     icon=icons.FILE_DOWNLOAD_OUTLINED,
                     on_click=lambda _: import_chatlog_dialog.pick_files(
-                        allowed_extensions=['json'],
+                        allowed_extensions=['json','txt'],
                         allow_multiple=False,
                         dialog_title='选择聊天记录文件导入',
                         initial_directory='./chatlog'
@@ -693,7 +712,10 @@ def ft_interface(page: ft.Page):
                 ElevatedButton(
                     "导出聊天日志",
                     icon=icons.FILE_UPLOAD_OUTLINED,
-                    on_click=lambda _: save_file_dialog.save_file(),
+                    on_click=lambda _: save_file_dialog.save_file(
+                        file_name=f"chat_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt",
+                        # file_type=ft.FilePickerFileType.CUSTOM
+                    ),
                     disabled=page.web,
                 ),
                 settings_btn
@@ -810,7 +832,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V5.0.0  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V5.1.0  By B1lli', size=10)
     page.add(ver_text)
 
 
