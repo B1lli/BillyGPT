@@ -18,7 +18,7 @@ from flet import (
     icons,
 )
 from prompt_engineering import *
-
+import codecs
 
 # 赋值固定的api_key
 # 测试用
@@ -112,6 +112,7 @@ def chatGPT_getkeyword(content):
     keyword = decode_chr ( chatGPT_raw_response.choices[0]['text'].strip () )
     print(keyword)
     return keyword
+
 
 # 获取关键词（还是用jieba吧）
 def chatGPT_getsummary(content):
@@ -256,7 +257,7 @@ def get_combined_data(chat_json_path: str) -> list[dict[str, str]]:
         data = json.load(f)
         result = []
         for chat_item in data:
-            if chat_item['message']['summary']:
+            if chat_item['message']['summary'] != '':
                 result.append({
                     "role": chat_item['message']["role"],
                     "content": chat_item['message']["summary"]
@@ -302,7 +303,6 @@ def get_chatlog_keyword(chatlog_json_path) :
 
 # 创建chat数据记录
 chat_json_path = create_chat_json()
-
 
 
 '''
@@ -418,8 +418,9 @@ def write_settings(settings):
                 f.write(key + ' = ' + value + '\n')
         f.writelines(lines)
 
+
 '''
-读写字体文件的函数
+读写字体文件的函数（适用于windows）
 '''
 def replace_font_file(path):
     old_path = os.path.join(".", "asset", "font.ttf")
@@ -444,6 +445,7 @@ def replace_font_file(path):
 
 # 字符转码
 def decode_chr(s):
+    s = s.replace('\\\\','\\')
     pattern = re.compile(r'(\\u[0-9a-fA-F]{4}|\n)')
     result = ''
     pos = 0
@@ -459,6 +461,31 @@ def decode_chr(s):
         pos = match.end()
     result += s[pos:]
     return result
+
+
+def convert_content_to_unicode(txt_path):
+    # 读取txt文件，转换为Python列表
+    with open(txt_path, 'r', encoding='utf-8') as f:
+        txt_data = f.read()
+        data = json.loads(txt_data)
+
+    # 转换content内容为Unicode编码
+    for item in data:
+        content = item["message"]["content"]
+        item["message"]["content"] = content.encode('unicode_escape').decode()
+        # item["message"]["content"] = item["message"]["content"].replace('\\u',r'\u')
+
+    # 将Python列表转换为json格式字符串
+    json_data = json.dumps(data, ensure_ascii=False)
+
+    # 保存json文件到cache文件夹
+    if not os.path.exists("./cache"):
+        os.makedirs("./cache")   # 创建cache文件夹
+    json_path = f"./cache/{os.path.basename(txt_path)[:-4]}.json"
+    with open(json_path, 'w', encoding='utf-8') as f:
+        f.write(json_data)
+
+    return json_path
 
 
 # markdown检测
@@ -491,21 +518,31 @@ def ft_interface(page: ft.Page):
     # 导入聊天记录
     def import_chatlog(e: FilePickerResultEvent):
         try:
-            chat_area.controls.clear()
+            clear_page()
             selected_file = (
                 ", ".join(map(lambda f: f.path, e.files)
                           ) if e.files else "Cancelled!"
             )
-            full_chatlog = get_combined_data(selected_file)
-            print(full_chatlog)
-            for chat_row_content in full_chatlog:
-                role = chat_row_content['role']
-                content = chat_row_content['content']
-                chat_area.controls.append(chat_row(role, content))
-                page.update()
+            if selected_file[-4:] == 'json':
+                full_chatlog = get_combined_data(selected_file)
+                print(full_chatlog)
+                for chat_row_content in full_chatlog:
+                    role = chat_row_content['role']
+                    content = chat_row_content['content']
+                    chat_area.controls.append(chat_row(role, content))
+                    page.update()
+            elif selected_file[-4:] == '.txt':
+                json_path = convert_content_to_unicode(selected_file)
+                full_chatlog = get_combined_data(json_path)
+                for chat_row_content in full_chatlog:
+                    role = decode_chr(chat_row_content['role'])
+                    content = decode_chr(chat_row_content['content'])
+                    chat_area.controls.append(chat_row(role, content))
+                    page.update()
         except Exception as e:
             chat_area.controls.append(
                 Text(f'出现如下报错\n{e}\n请检查导入的聊天记录是否正确，或联系开发者微信B1lli_official'))
+            page.update()
 
     import_chatlog_dialog = FilePicker(on_result=import_chatlog)
 
@@ -561,8 +598,6 @@ def ft_interface(page: ft.Page):
     def cancel_settings(e):
         settings_dlg.open = False
         page.update()
-
-
 
 
     change_font_dialog = FilePicker(on_result=change_font_clicked)
@@ -668,15 +703,6 @@ def ft_interface(page: ft.Page):
                     chat_text.value)))
         page.update()
 
-    '''
-    添加清空页面方法
-    '''
-    def clear_page():
-        global chat_json_path
-        chat_area.controls.clear ()
-        page.update()
-        chat_json_path = create_chat_json()
-        pass
 
 
     '''
@@ -750,7 +776,17 @@ def ft_interface(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.add(view)
 
-    invalid_count = 0
+
+    '''
+    添加清空页面方法
+    '''
+    def clear_page():
+        global chat_json_path
+        chat_area.controls.clear ()
+        page.update()
+        chat_json_path = create_chat_json()
+        chatPO_btn.disabled = False
+
     '''
     聊天方法，向api发送请求
     '''
@@ -832,9 +868,13 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V5.1.0  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V5.2.0  By B1lli', size=10)
     page.add(ver_text)
 
 
 if __name__ == '__main__':
+    # 在客户端运行
     ft.app(target=ft_interface, assets_dir='assets')
+
+    # 在内网运行
+    # ft.app ( port=8550, target=ft_interface, view=ft.WEB_BROWSER ,assets_dir='assets')
