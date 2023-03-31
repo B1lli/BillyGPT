@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,flutter
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,flutter
 
+APIKEY.txt
+[chat]*.*
+
 ### Flutter ###
 # Flutter/Dart/Pub related
 **/doc/api/
