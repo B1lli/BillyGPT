@@ -1,3 +1,8 @@
+# CAREFUL!! FORK REPO
+original source save APIKEY.txt in your repo and when sync(commit), it upload in repo.
+APIkey can be exposed in GITHUB
+
+_______________________________
 # BillyGPT
 
 BillyGPT - 基于提示工程，可自动帮你优化提示的，免费开源的全平台傻瓜式 ChatGPT 本地客户端，支持断点续聊、修改历史对话、本地聊天记录存储导入导出、添加自己的 apikey
