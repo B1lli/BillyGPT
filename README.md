@@ -4,12 +4,6 @@ BillyGPT - 基于提示工程，可自动帮你优化提示的，免费开源的
 
 ![function_preview2.png](https://s2.loli.net/2023/03/20/Dqv932GTMre8kA5.png)
 
-# 对Fork本项目者的特别提示!! CAREFUL!! FORK REPO
-如果你fork了之前版本的项目，记得不要上传你的APIKEY.txt文件到GitHub，有泄露风险
-
-original source save APIKEY.txt in your repo and when sync(commit), it upload in repo.
-APIkey can be exposed in GITHUB
-
 
 # 功能
 
@@ -84,5 +78,13 @@ markdown格式显示
 新建了用户群，面向普通用户
 <div align=left>
   <img src="https://s2.loli.net/2023/03/20/ydiOH4QIjK8PRgc.jpg" width="250"/>
-<img src="https://img.picgo.net/2023/03/26/join_us86bcf5f246cb7c77.jpeg" width="250"/> <img src="https://img.picgo.net/2023/03/25/cb9d9c34a16eded377d08a1f28ad698c32b9fa312444cb1c.jpeg" width="250"/>
+<img src="https://img.picgo.net/2023/04/05/join_usa20b0ca3b8fddcce.jpeg" width="250"/> <img src="https://img.picgo.net/2023/03/25/cb9d9c34a16eded377d08a1f28ad698c32b9fa312444cb1c.jpeg" width="250"/>
 </div>
+
+
+# 对Fork本项目者的特别提示!! 
+如果你fork了之前版本的项目，记得不要上传你的APIKEY.txt文件到GitHub，有泄露风险
+
+# CAREFUL!! FORK REPO
+original source save APIKEY.txt in your repo and when sync(commit), it upload in repo.
+APIkey can be exposed in GITHUB
