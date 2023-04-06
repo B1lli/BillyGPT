@@ -592,7 +592,7 @@ def ft_interface(page: ft.Page):
     def save_settings(e):
         settings_dlg.open = False
         write_APIKEY(apikey_field.value)
-        read_APIKEY()
+        openai.api_key = read_APIKEY()
         page.update()
 
     def cancel_settings(e):
@@ -714,9 +714,89 @@ def ft_interface(page: ft.Page):
                 add_msg(e)
 
     page.on_keyboard_event = on_keyboard
+
+
+    '''
+    添加模板选择功能
+    可以读取模板文件，实时搜索，选择时可以切换身份
+    '''
+    class DropdownSearchBar(ft.UserControl):
+        def __init__(self):
+            super(DropdownSearchBar, self).__init__()
+            self.item_number = ft.Text(size=9,italic=True)
+
+        def dropdown_search(self):
+            _object_ = ft.Container(
+                width=450,
+                height=50,
+                bgcolor="white10",
+                border_radius=6,
+                padding=ft.padding.only(top=15),
+                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                animate=ft.animation.Animation(400,"decelerate"),
+                content=ft.Column(
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.START,
+                    controls=[
+                        Row(
+                            spacing=10,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                ft.Icon(
+                                    ft.icons.SEARCH_ROUNDED,
+                                    size=15,
+                                    opacity=0.90,
+                                ),
+                                ft.TextField(
+                                    border_color='transparent',
+                                    height=20,
+                                    text_size=12,
+                                    content_padding=2,
+                                    cursor_color='black',
+                                    cursor_width=1,
+                                    hint_text='搜索模板',
+                                    on_change=None
+                                ),
+                                self.item_number,
+                            ],
+                        ),
+                        ft.Column(
+                            scroll='auto',
+                            expand=True
+                        )
+                    ]
+                )
+            )
+            return _object_
+
+        def build(self):
+            return ft.Container()
+
+    page.add(DropdownSearchBar())
+    # def template_change(self, e):
+    #     template_name = template_dropbox.value
+    #     renew_now_chat(
+    #         chat_json_path=chat_json_path,
+    #         hash_val=self.hash,
+    #         role=self.role)
+    #
+    #
+    # template_dropbox = ft.Dropdown(
+    #         value=role,
+    #         width=150,
+    #         options=[
+    #             ft.dropdown.Option("system"),
+    #             ft.dropdown.Option("user"),
+    #             ft.dropdown.Option("assistant"),
+    #         ],
+    #         on_change=template_change
+    #     )
+
     '''
     设置布局 添加控件
     '''
+    # 模板选择下拉框
+
     page.add(
         Row(
             [
@@ -792,12 +872,14 @@ def ft_interface(page: ft.Page):
     '''
     def chatGPT(message=None):
         try:
+            global role_template
             if not message: message = get_combined_data(chat_json_path)
             # message = get_combined_data ( chat_json_path )
             chatGPT_raw_response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=message
             )
+            if role_template:pass
             chatGPT_response = decode_chr(
                 chatGPT_raw_response.choices[0].message['content'])
             return chatGPT_response.strip()
@@ -824,6 +906,7 @@ def ft_interface(page: ft.Page):
 
 
         except Exception as error:
+            print(openai.api_key)
             chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str ( error )}\n请联系开发者微信B1lli_official'))
             page.update()
@@ -861,6 +944,7 @@ def ft_interface(page: ft.Page):
                 ft.Text(f'出现如下报错\n{str(error)}\n请在设置中更新可用的apikey'))
             page.update()
         except Exception as error:
+            print(openai.api_key)
             chat_area.controls.append(
                 ft.Text(f'出现如下报错\n{str ( error )}\n请联系开发者微信B1lli_official'))
             page.update()
@@ -868,7 +952,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V5.2.0  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V5.2.1  By B1lli', size=10)
     page.add(ver_text)
 
 
