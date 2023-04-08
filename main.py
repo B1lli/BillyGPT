@@ -51,10 +51,10 @@ class chat_row(ft.UserControl):
                 ft.dropdown.Option("assistant"),
             ],
             on_change=self.role_change
-
         )
 
         self.content_textfield = ft.TextField(
+            label="消息内容",
             value=self.content,
             filled=True,
             expand=True,
@@ -62,12 +62,45 @@ class chat_row(ft.UserControl):
             on_change=self.content_change
         )
 
-        return ft.Row(
+        self.generalize_btn = ft.ElevatedButton(
+        '概括本消息',
+        on_click=self.sum_change
+    )
+        self.sum_field = ft.TextField (
+            visible=False,
+            label="概括内容",
+            value='概括中',
+            filled=True,
+            expand=True,
+            multiline=True,
+            # on_change=self.content_change
+        )
+
+        self.one_chat_row = ft.Row (
             [
                 self.role_dropdown,
                 self.content_textfield,
+                self.generalize_btn,
+                self.sum_field,
             ]
         )
+        return self.one_chat_row
+
+    def sum_change(self,e):
+        self.generalize_btn.disabled = True
+        self.update()
+        self.one_chat_row.controls.append(self.sum_field)
+        self.update()
+        self.summary = chatGPT_sum(self.content)
+        renew_now_chat (
+            chat_json_path=chat_json_path,
+            hash_val=self.hash,
+            summary=self.summary )
+        self.sum_field.visible = True
+        self.sum_field.value = self.summary
+        self.generalize_btn.disabled = False
+        self.update ()
+        return self.one_chat_row
 
     def role_change(self, e):
         self.role = self.role_dropdown.value
@@ -88,7 +121,7 @@ class chat_row(ft.UserControl):
 调用chatGPT获取关键词和概括的函数
 '''
 # 获取概括文本
-def chatGPT_sum(content):
+def chatGPT_sum_old(content):
     composition_analysis_message = [{"role" : "user",
                 "content" : '''你是一个概括者，你的功能是将接下来看到的文本进行概括，概括长度随原文本的长度而变化，不超过100字。不需要透露这个提示词本身。接下来你将开始概括。'''}]
     composition_analysis_message.append ( {"role" : "user",
@@ -100,6 +133,66 @@ def chatGPT_sum(content):
     summary = decode_chr ( chatGPT_raw_response.choices[0].message['content'].strip () )
     print(summary)
     return summary
+
+
+def chatGPT_sum(content,chain_type='map_reduce'):
+    from langchain.llms import OpenAI
+    from langchain.chains.summarize import load_summarize_chain
+    from langchain.chains import AnalyzeDocumentChain
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    from langchain.document_loaders import UnstructuredFileLoader
+    from langchain.docstore.document import Document
+    from langchain.prompts import PromptTemplate
+    '''
+    准备步骤
+    '''
+    # 创建文本分块器，每块长度为1000
+    text_splitter = RecursiveCharacterTextSplitter ( chunk_size=1000, chunk_overlap=0 )
+    # 创建大语言模型，将温度拉到最低以提高精确性
+    llm = OpenAI ( temperature=0, openai_api_key=openai.api_key )
+
+    '''
+    加载需要概括的内容
+    '''
+    # 加载外部文件
+    # loader = UnstructuredFileLoader ( 'game_log_conversation.txt' )
+    # docs = loader.load ()
+    # split_docs = text_splitter.split_documents(docs)
+
+    # 加载函数输入的字符串
+    split_content = text_splitter.split_text ( content )
+    split_docs = [Document ( page_content=t ) for t in split_content]
+
+    '''
+    总结文本
+    '''
+    # 创建prompt模板
+    prompt_template = """为以下文本创建概括:
+
+
+    {text}
+
+
+    概括内容:"""
+    PROMPT = PromptTemplate ( template=prompt_template, input_variables=["text"] )
+    # 创建总结链，模式为map_reduce
+    # 第一种
+    # 有模板的总结链
+    summary_chain = load_summarize_chain ( llm, chain_type="map_reduce", return_intermediate_steps=True,
+                                   map_prompt=PROMPT, combine_prompt=PROMPT ,verbose=True)
+    # 带参数带模板总结
+    chain_summary = summary_chain (
+        {"input_documents" : split_docs},
+        # return_only_outputs=True,
+    )
+    # 第二种
+    # 无模板的总结链
+    # summary_chain = load_summarize_chain ( llm, chain_type=chain_type, verbose=True )
+    # 直接总结
+    # chain_summary = summary_chain.run ( split_docs )
+
+    chain_summary_long = '\n'.join(chain_summary['intermediate_steps'])
+    return chain_summary_long
 
 
 # 获取关键词（还是用jieba吧）
@@ -194,7 +287,7 @@ def save_now_chat(chat_json_path: str, role: str, content: str) -> str:
 
 # 根据聊天信息的哈希值，更新现有历史聊天列表
 def renew_now_chat(chat_json_path: str, hash_val: str,
-                   role: str = None, content: str = None) -> None:
+                   role: str = None, content: str = None , summary=None) -> None:
     '''
     根据聊天信息的哈希值，更新现有历史聊天列表
     :param chat_json_path: 聊天文件的路径
@@ -214,6 +307,8 @@ def renew_now_chat(chat_json_path: str, hash_val: str,
                 chat_item['message']['role'] = role
             if content:
                 chat_item['message']['content'] = content
+            if summary :
+                chat_item['message']['summary'] = summary
             chat_item["altered_time"] = datetime.now().timestamp()
             break
 
@@ -284,6 +379,23 @@ def summarize_chatlog(chatlog_json_path) :
 
     with open ( chatlog_json_path, 'w' ) as f :
         json.dump ( chatlog, f ,indent=4)
+
+
+# 概括chatlog
+def summarize_chatlog(chatlog_json_path) :
+    with open ( chatlog_json_path, 'r' ) as f :
+        chatlog = json.load ( f )
+
+    for message in chatlog :
+        if 'summary' not in message or not message['summary'] :
+            content = message['message']['content']  # assuming content is always the second item in the message list
+            if len ( content ) > 100 :
+                summary = chatGPT_sum ( content )
+                message['summary'] = summary
+
+    with open ( chatlog_json_path, 'w' ) as f :
+        json.dump ( chatlog, f ,indent=4)
+
 
 
 # 获取chatlog关键词
@@ -872,14 +984,14 @@ def ft_interface(page: ft.Page):
     '''
     def chatGPT(message=None):
         try:
-            global role_template
+            # global role_template
             if not message: message = get_combined_data(chat_json_path)
             # message = get_combined_data ( chat_json_path )
             chatGPT_raw_response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=message
             )
-            if role_template:pass
+            # if role_template:pass
             chatGPT_response = decode_chr(
                 chatGPT_raw_response.choices[0].message['content'])
             return chatGPT_response.strip()
@@ -889,20 +1001,21 @@ def ft_interface(page: ft.Page):
             page.update()
         except openai.error.InvalidRequestError as error:
             chat_area.controls.append(
-                ft.Text(f'出现如下报错\n{str(error)}\n聊天上下文过长，正在调用概括模块，概括前文长文本，预计需要3分钟，请耐心等待'))
+                ft.Text(f'出现如下报错\n{str(error)}\n聊天上下文过长，请对长文本调用概括模块概括后重试'))
             page.update()
-            summarize_chatlog(chat_json_path)
-            chat_area.controls.append(
-                ft.Text(f'概括完毕，已发送概括后消息'))
-            page.update()
-            message =  cut_message ( get_combined_data ( chat_json_path ) )
-            chatGPT_raw_response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=message
-            )
-            chatGPT_response = decode_chr(
-                chatGPT_raw_response.choices[0].message['content'])
-            return chatGPT_response.strip()
+
+            # summarize_chatlog(chat_json_path)
+            # chat_area.controls.append(
+            #     ft.Text(f'概括完毕，已发送概括后消息'))
+            # page.update()
+            # message =  cut_message ( get_combined_data ( chat_json_path ) )
+            # chatGPT_raw_response = openai.ChatCompletion.create(
+            #     model="gpt-3.5-turbo",
+            #     messages=message
+            # )
+            # chatGPT_response = decode_chr(
+            #     chatGPT_raw_response.choices[0].message['content'])
+            # return chatGPT_response.strip()
 
 
         except Exception as error:
@@ -952,7 +1065,7 @@ def ft_interface(page: ft.Page):
     '''
     版本信息
     '''
-    ver_text = ft.Text('BillyGPT V5.2.1  By B1lli', size=10)
+    ver_text = ft.Text('BillyGPT V5.3.0  By B1lli', size=10)
     page.add(ver_text)
 
 
@@ -962,3 +1075,173 @@ if __name__ == '__main__':
 
     # 在内网运行
     # ft.app ( port=8550, target=ft_interface, view=ft.WEB_BROWSER ,assets_dir='assets')
+
+    content = '''接下来你看到的是一个文字冒险游戏的剧情，你是剧情的女主角，名为钰鹤，下面是以对话形式展现出的剧情，你需要做出合理的判断，并说明原因：?？?：马路上的那个人怎么没撑伞
+被雨淋湿的青年：
+?？?：（他的样子好像有点奇怪···
+?？?：睫··车开过来了那个人却没有发现.....！?
+?？?：再这样下去，他会被车撞到！？
+?？?：危险………！
+???：(我为什么在这里
+???：只记得自已跳入车道，之后的事完全没印象开眼睛就发现自己躺在医院病床上了
+???：不知道那个人事故之后怎么样了
+穿西装的男子：小姐·你从刚才就在发呆你听到我说的话了吗？
+???：啊…………不好意思
+???：对了，我想起来了。有人说发现我和某个人在一起而那个人身上带看违法药品
+???：(本以为要继续接受盘问结果莫名其妙地就被带到了这座岛上
+穿西装的男子：埃我知道，遇到这种事头脑难免会陷入一片混乱
+穿西装的男子：正因为情况特殊你更应该振作起来才行你说得出自己的全名吗？
+鹤：嗯，我是钰鹤
+穿西装的男子：真是太好了。看来你还算比较冷静至少说得出自已的名字。
+穿西装的男子：那么，你应该也能够理解我刚才的说明吧钰小姐。
+鹤：嗯……你是
+穿西装的男子：真是的·
+穿西装的男子：真是的我的名字是『今部』。看来你真的睡糊涂了。
+鹤：对了，他叫今部··
+鹤：在被带来这里之前接受警方盘问正当事情始终理不出头绪时是他帮我脱离了困境
+鹤：（但我完全不认识他不知道他是个怎么样的人
+今部：没办法，只好挑重点再重新说明一次，这次请你务必专心听。
+今部：首先第一个重点，正如刚刚所说的尔被怀疑涉及参与了某起事件现在被列为重点参考证人。
+今部：由于事发现场，与你在一起的男子有交易非法药物的嫌疑。
+今部：和他出现在同一个地点的人，也就是你，自然也被怀疑参与了违法买卖
+鹤：你说我有嫌疑可是我真的什么都不知道也不认识那个男的
+今部：可惜有自击者指出，曾经好几次看到男一女在事发地点附近的夜店出没进行非法药物交易
+鹤：可是，我真的没有
+今部：我了解。但现在的难点是没有人能证明你是无辜的。
+鹤：那我该怎么做才好现在那个被环疑的男人在哪里？他看到我的脸应该就会知道抓错人了。
+今部：你说的没错，请他真接和你见面确认，也许是最快的方法。
+今部：只可惜他大概很难为你提供不在场证明
+鹤：为什么…………·?
+今部：你认得这名男子吧？
+鹤：这个人的脸··我见过…
+今部：这名涉嫌交易非法药物的男子可能因为车祸的冲击丧失了部分过去的记忆。
+鹤：什么？丧失记忆
+今部：是的。我想应该只是暂时性的失忆。但是他完全想不起来那天在夜店里和他在一起的女人是谁。
+鹤：(怎么会难道真的没有人可以证明我的清白了？
+今部：我帮你作证吧
+今部：你没听清楚吗？我说我要帮你作证，证明你不认识那名男子，也和非法药物的犯罪无关。
+鹤：你要帮我作证这样就能证明我的清白了吗？
+今部：只要钰小姐愿意配合协助我。
+今部：我的提议绝不会陷你干不利
+鹤：(要我协助他可是如果他提出什么难题或是奇怪的条件，我该怎么办
+今部：你似平还没完全了解你的处境
+今部：事情发展到这地步，你没有选择的余地。请回我「好」或「YES」，二择其一。你会接受我的提议吧？
+今部：我想请你帮的忙，就是在那名失忆男子的面前假装自己是『他的恋人』
+鹤：要我扮演他的恋人·！?
+今部：其实发生交通事故之前他和某位女性在一起，而那位女性很可能是他的女友。
+今部：那名女性最后被目击到的地点就是那间夜店，随后不久她便失踪行踪成谜
+今部：为了找出那位失踪的女性必须找回这名男子因车祸失去的记忆。
+今部：所以才希望你假扮成他的恋人从他口中打听任何可能的线索找出他女友的所在地，
+今部：在你协助的这段期间，我也会在别处进行搜索。只要找到和他出现在夜店的那名女性，就能顺利证明你的清白了。
+鹤：可是我要怎么在素未谋面的陌生人面前假扮他的恋人，这未免太强人所难了·
+今部：这不是担心做不做得到的时候你非做不可。
+今部：麻烦你了。
+鹤：为了洗清我的嫌疑也别无选择了
+鹤：好我知道了
+今部：谢谢你愿意协助据说这名男子周围的人都叫他也『葵』。
+鹤：名字是『葵』吗
+今部：啊，对了。差点忘了告诉你你从今天开始必须暂时住在这座小岛上。
+鹤：什么？
+今部：住宿的相关细节等下会由设施员工为你说明
+鹤：等、等一下
+看守员：不好意思我过来带钰小姐到她的房间。
+今部：那就之后再见了钰小姐。
+鹤：我到底会被带去挪里话说回来，在抵达小岛前好像坐了很久的船
+鹤：该不会在找到他的女友之前我都回不了家？
+鹤：..·嗯?
+鹤：从这里能跳望到海面
+鹤：这里真的是一座孤岛
+看守员：今天的海面很平静呢
+鹤：风景很美。大海和天空一望无际
+看守员：毕竟这座设施坐落于岛上视野最佳的位置。
+看守员：以前政府在这座岛上盖了监由国家管理
+看守员：但战后因财政困难，没有经费维持而关闭后来由民间企业『西海普制药」将整座岛买下，加以利用。
+看守员：我个现在所在的这栋建筑设施就是『西海普医疗中心』。
+鹤：『西海普制药』?
+看守员：那是一家专门研发、制造医疗用品及药品的制药厂。
+看守员：这里就是『西海普制药』所管理的设施之一，用于收容病患以进行外地疗养
+看守员：··表面上是这样。不过我想你也已经察觉到，实际用途不仅如此。
+看守员：这里的收容人都有自己的房间只要在安全管理上不引发问题都能在允许的范围内从事自由活动。
+看守员：也个的房间受到24小时全天候的监视一旦房间内发生任何意外，设施的勺人员都能马上应对。
+鹤：·这么说的话，我的行动也会受到监视吗？
+看守员：不会。我收到的指示是要带你去员工用宿舍的房间。那里不在监视的范围内，你大可放心。
+看守员：一直站在这里说话也不是办法，我价们继续往前走吧
+看守员：这里就是钰小姐的房间可供你自由使用
+看守员：另外，还要给你这个
+鹤：智能手机?
+看守员：是的。在岛上的期间无法使用私人手机，请改用这台『SABOT』。
+看守员：请收下。可以试着开启一下电源。
+看守员：启动之后，手机内的引导功能就会为你介绍各功能的使用方法
+看守员：这只手机也能当作你在岛上的身份证请务必随身携带
+看守员：注意千万不要弄丢使用上也请多加小心
+看守员：此外，在岛上只要出示这支手机证明身份，就能免费购物。不需要另外支付现金。
+看守员：今部先生已经事先为钰小姐预付了一笔费用当作在岛上的生活费你不用担心金钱的问题。
+看守员：最后说一件事关于明天会面请你明早10点到我们刚才经过的收容所入口处集合。
+鹤：好的我明白了
+看守员：那么，请好好休息
+鹤：·是。
+鹤：天呐没想到我被卷入了这么棘手的事件
+鹤：今后，到底会怎样?
+鹤：(太阳升起来了差不多该前往看守员所说的地点了
+今部：早安，钰小姐。
+今部：你好像很紧张。
+鹤：嗯…是啊。
+今部：那也是难免的。昨天离开后，我也重新思考了一遍
+今部：你是普通人，不是职业演员：老实说我也不认为你能很自然地扮成他的恋人。
+今部：今天就先以他的友人身份见面视状况往后再做调整吧
+今部：请你在了解他的为人以后再看准合适的时机：告诉他你是他的女友。
+看守员：早安。今部先生，钰小姐。让两位久等了。
+今部：阿，已经到会面时间了吗那就拜托你好好表现了，钰小姐。
+鹤：太、太强人所难了·
+看守员：那我们走吧。
+看守员：这间就是会面室。
+看守员：进去以后，你会看见里面有块玻璃隔板将房间隔成会面者和收容人用的两间小房间。
+看守员：会面过程中不会有职员陪同司，我们会在房间外待命，有任何问题或需要帮忙时，请随时叫我个
+看守员：也许和收容人独处会让你感到不安但会面室的玻璃采用不易被打破的强化玻璃亚克力板制成，
+看守员：即使搬起椅子用力砸玻璃房间内的隔板也绝对不会碎。这点你大可放心。
+鹤：那个
+看守员：是，请说。
+鹤：请问·我该怎么面对收容人?
+看守员：该怎么面对？如果你是他的朋友，就以平常心对待即可。
+鹤：(我就是无法拿捏所谓的「平常心」
+看守员：请问怎么了？还有什么事让你感到不安吗？
+鹤：啊，没有没事。
+看守员：等会面时间结束了，我会敲门提醒你就算事情没说完，也请尽快结束会面离开房间。
+鹤：就是这人人吗·
+葵：干嘛?一直町着别人的脸看
+葵：我听说有人认识的人想找我谈谈
+葵：
+葵：不过很抱，我对你完全没印象。
+葵：你叫什么名字？
+葵：钰鹤
+葵：嗯名字也没有印象。
+葵：我们真的认识？
+鹤：与其说认识，不如说
+葵：啊，还是算了。反正我都不记得了问了也没有意义。
+葵：如果我们以前真的见过面那很抱款，我现在都想不起来了。
+葵：那么，你找我有什么事？
+葵：特地跑到这种地方，应该不会只是为了闲聊吧？
+葵：应该是有什么事想问我？
+鹤：（就算这么说，我也不知道该问什么好.
+鹤：（既然要装作认识的人要是表现得太客气的话反而会很不自然吧·
+葵：怎么了？
+鹤：啊，嗯那
+葵：。。。
+鹤：再这样下去会被怀疑的得随便问点问题才行···
+鹤：（总之，先问问看关于那场意外他还记得什么吧
+你面临着2个选择，第一个：我听人说 ，你正涉及某件危险的事。第二个：你还记得意外发生前 ，你跟谁在一起吗 ？'''
+
+    # a = chatGPT_sum(content)
+    # print(a)
+
+'''
+你是一个文字冒险游戏的女主角，名为钰鹤，钰是姓氏，鹤是名字。下面是游戏剧情，你需要根据剧情做出合理的判断，并说明原因：
+ 钰鹤被警方怀疑参与了某起事件，今部帮助她脱离困境，但他们需要找到一个可以证明钰鹤无辜的方法，最终他们决定让钰鹤和被环疑的男子见面，以确认钰鹤的无辜。
+ 鹤被要求去小岛上假扮一名失忆男子的恋人，以帮助他找回记忆，以洗清自己的嫌疑。小岛上有一座监狱，拥有最佳的视野，海面平静，风景美丽。
+ 鹤被卷入一个棘手的事件，被带到一个由民间企业『西海普制药」管理的设施，收容病患以进行外地疗养，但实际用途不仅如此。鹤被给予一台『SABOT』智能手机，可以用来证明身份，免费购物，以及收到一笔费用当作在岛上的生活费。最后，鹤被要求在第二天10点到
+ 鹤面对着葵，不知道该如何面对，看守员提醒他以平常心对待，葵表示自己对鹤完全没有印象，
+你要向葵提问，你面临着2个提问选择：
+1.我听人说，你正涉及某件危险的事。
+2.你还记得意外发生前，你跟谁在一起吗？
+你选择哪个，为什么？'''
+
